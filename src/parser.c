@@ -36,11 +36,37 @@ static char **split_words(char *s, int *count)
 
 int parse_command(char *line, struct command *cmd)
 {
-    cmd->argv = split_words(line, &cmd->argc);
-    if (cmd->argc == 0) {               /* blank line */
-        free_command(cmd);
-        return 0;
+    /*
+     * Split at the first '>'. The operator needs no whitespace around it,
+     * so "ls>out" works too. `target` is NULL if there is no '>'.
+     */
+    char *target = line;
+    char *command_part = strsep(&target, ">");
+
+    if (target != NULL && strchr(target, '>') != NULL)
+        return -1;                      /* more than one '>' */
+
+    cmd->argv = split_words(command_part, &cmd->argc);
+    cmd->outfile = NULL;
+
+    if (target == NULL) {               /* no redirection */
+        if (cmd->argc == 0) {           /* blank line */
+            free_command(cmd);
+            return 0;
+        }
+        return 1;
     }
+
+    /* "command [args] > file": a command and exactly one file are required. */
+    int nfiles;
+    char **files = split_words(target, &nfiles);
+    if (cmd->argc == 0 || nfiles != 1) {
+        free(files);
+        free_command(cmd);
+        return -1;
+    }
+    cmd->outfile = files[0];
+    free(files);
     return 1;
 }
 

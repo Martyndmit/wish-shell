@@ -51,7 +51,10 @@ int main(int argc, char *argv[])
             break;              /* EOF: exit gracefully */
 
         struct command cmd;
-        if (parse_command(line, &cmd)) {
+        int parsed = parse_command(line, &cmd);
+        if (parsed < 0) {
+            wish_error();       /* syntax error */
+        } else if (parsed > 0) {
             should_exit = execute_command(&cmd);
             free_command(&cmd);
         }
