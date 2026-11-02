@@ -62,10 +62,10 @@ static pid_t launch(const struct command *cmd)
         /* execv() returns only if it failed. */
         wish_error();
         /*
-         * _exit(), not exit(): exit() would run the stdio cleanup of the
-         * copy of the shell's memory, which for the batch file moves the
-         * file offset shared with the parent back — the parent would then
-         * read some lines twice.
+         * _exit(), not exit(): exit() would also run the stdio cleanup in
+         * this copy of the shell. For the batch file that moves the file
+         * offset, which is shared with the parent, back to the current
+         * line, and the parent would then execute some lines twice.
          */
         _exit(1);
     }
