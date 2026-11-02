@@ -15,3 +15,12 @@ make
 ```sh
 ./wish
 ```
+
+## Тести
+
+```sh
+make test
+```
+
+Скрипт `scripts/run-tests.sh` завантажує офіційні тести OSTEP у
+`.ostep-projects/` і запускає їх для `./wish`.
