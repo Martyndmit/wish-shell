@@ -86,14 +86,19 @@ static void restore_fd(int saved, int target)
 }
 
 /*
- * Runs a built-in command whose output is redirected. The specification
- * leaves this case open; wish treats it like any other command. A built-in
- * runs inside the shell itself, so the shell temporarily points its own
- * stdout/stderr to the file: dup() saves the original descriptors, dup2()
- * redirects them, and afterwards they are restored.
+ * Runs a built-in command inside the shell. Returns 1 if the shell has to exit.
+ *
+ * Redirection of built-ins is left open by the specification; wish treats it
+ * like for any other command. Since a built-in runs in the shell process
+ * itself, the shell temporarily points its own stdout/stderr to the file:
+ * dup() saves the original descriptors, dup2() redirects them, and
+ * afterwards they are restored.
  */
-static int run_builtin_redirected(const struct command *cmd)
+static int execute_builtin(const struct command *cmd)
 {
+    if (cmd->outfile == NULL)
+        return run_builtin(cmd);
+
     int fd = open_output(cmd->outfile);
     if (fd < 0) {
         wish_error();
@@ -118,13 +123,34 @@ static int run_builtin_redirected(const struct command *cmd)
     return should_exit;
 }
 
-int execute_command(const struct command *cmd)
+int execute_cmdline(const struct cmdline *cl)
 {
-    if (is_builtin(cmd->argv[0]))
-        return cmd->outfile != NULL ? run_builtin_redirected(cmd) : run_builtin(cmd);
+    if (cl->count == 0)
+        return 0;
 
-    pid_t pid = launch(cmd);
-    if (pid > 0 && waitpid(pid, NULL, 0) < 0)
-        wish_error();
-    return 0;
+    pid_t *pids = xmalloc((size_t)cl->count * sizeof(*pids));
+    int started = 0;
+    int should_exit = 0;
+
+    /* 1. Start all commands without waiting for any of them... */
+    for (int i = 0; i < cl->count; i++) {
+        const struct command *cmd = &cl->cmds[i];
+
+        if (is_builtin(cmd->argv[0])) {
+            if (execute_builtin(cmd))
+                should_exit = 1;    /* exit only after the whole line is done */
+        } else {
+            pid_t pid = launch(cmd);
+            if (pid > 0)
+                pids[started++] = pid;
+        }
+    }
+
+    /* 2. ...and only then wait until every started process has finished. */
+    for (int i = 0; i < started; i++)
+        if (waitpid(pids[i], NULL, 0) < 0)
+            wish_error();
+
+    free(pids);
+    return should_exit;
 }

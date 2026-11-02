@@ -50,14 +50,13 @@ int main(int argc, char *argv[])
         if (getline(&line, &cap, input) < 0)
             break;              /* EOF: exit gracefully */
 
-        struct command cmd;
-        int parsed = parse_command(line, &cmd);
-        if (parsed < 0) {
-            wish_error();       /* syntax error */
-        } else if (parsed > 0) {
-            should_exit = execute_command(&cmd);
-            free_command(&cmd);
+        struct cmdline cl;
+        if (parse_line(line, &cl) < 0) {
+            wish_error();       /* syntax error: the whole line is skipped */
+            continue;
         }
+        should_exit = execute_cmdline(&cl);
+        free_cmdline(&cl);
     }
 
     free(line);

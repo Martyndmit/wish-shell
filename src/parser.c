@@ -34,13 +34,25 @@ static char **split_words(char *s, int *count)
     return words;
 }
 
-int parse_command(char *line, struct command *cmd)
+static void free_command(struct command *cmd)
+{
+    free(cmd->argv);
+    cmd->argv = NULL;
+    cmd->argc = 0;
+}
+
+/*
+ * Parses one command: the text between '&' separators.
+ * Returns 1 if a command was parsed into `cmd`, 0 if the text is blank and
+ * -1 on a syntax error (nothing needs to be freed in the last two cases).
+ */
+static int parse_command(char *text, struct command *cmd)
 {
     /*
      * Split at the first '>'. The operator needs no whitespace around it,
      * so "ls>out" works too. `target` is NULL if there is no '>'.
      */
-    char *target = line;
+    char *target = text;
     char *command_part = strsep(&target, ">");
 
     if (target != NULL && strchr(target, '>') != NULL)
@@ -50,7 +62,7 @@ int parse_command(char *line, struct command *cmd)
     cmd->outfile = NULL;
 
     if (target == NULL) {               /* no redirection */
-        if (cmd->argc == 0) {           /* blank line */
+        if (cmd->argc == 0) {           /* blank */
             free_command(cmd);
             return 0;
         }
@@ -70,9 +82,39 @@ int parse_command(char *line, struct command *cmd)
     return 1;
 }
 
-void free_command(struct command *cmd)
+int parse_line(char *line, struct cmdline *cl)
 {
-    free(cmd->argv);
-    cmd->argv = NULL;
-    cmd->argc = 0;
+    int cap = 2;
+    cl->cmds = xmalloc((size_t)cap * sizeof(*cl->cmds));
+    cl->count = 0;
+
+    /* Every piece between '&' separators is a separate command. */
+    char *rest = line;
+    char *piece;
+    while ((piece = strsep(&rest, "&")) != NULL) {
+        struct command cmd;
+        int parsed = parse_command(piece, &cmd);
+        if (parsed < 0) {
+            free_cmdline(cl);
+            return -1;
+        }
+        if (parsed == 0)
+            continue;       /* blank piece: "&", "cmd &" and "& cmd" are fine */
+
+        if (cl->count == cap) {
+            cap *= 2;
+            cl->cmds = xrealloc(cl->cmds, (size_t)cap * sizeof(*cl->cmds));
+        }
+        cl->cmds[cl->count++] = cmd;
+    }
+    return 0;
+}
+
+void free_cmdline(struct cmdline *cl)
+{
+    for (int i = 0; i < cl->count; i++)
+        free_command(&cl->cmds[i]);
+    free(cl->cmds);
+    cl->cmds = NULL;
+    cl->count = 0;
 }

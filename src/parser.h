@@ -13,14 +13,20 @@ struct command {
     char *outfile;  /* file after '>', or NULL if output is not redirected */
 };
 
-/*
- * Parses `line` (modifying it) into `cmd`.
- * Returns 1 if a command was parsed, 0 if the line is empty and -1 on a
- * syntax error (nothing needs to be freed in the last two cases).
- */
-int parse_command(char *line, struct command *cmd);
+/* A whole input line: commands separated by '&', which run in parallel. */
+struct cmdline {
+    struct command *cmds;
+    int count;      /* 0 for a blank line or a line like "&" */
+};
 
-/* Frees the memory allocated by parse_command(). */
-void free_command(struct command *cmd);
+/*
+ * Parses `line` (modifying it) into `cl`.
+ * Returns 0 on success and -1 if any command has a syntax error; in that
+ * case the whole line is rejected and nothing needs to be freed.
+ */
+int parse_line(char *line, struct cmdline *cl);
+
+/* Frees the memory allocated by parse_line(). */
+void free_cmdline(struct cmdline *cl);
 
 #endif
