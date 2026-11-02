@@ -30,7 +30,9 @@ mkscript() {
 }
 
 # run_case MODE NAME SETUP INPUT EXPECTED_STDOUT EXPECTED_STDERR [EXPECTED_STATUS]
-#   MODE   batch (input is passed as a batch file) or stdin (interactive mode)
+#   MODE   batch: INPUT is written to a file that is passed as the batch file
+#          stdin: INPUT is fed to the interactive mode
+#          args:  INPUT is the command-line arguments of wish
 #   SETUP  bash code run in the working directory before wish starts
 run_case() {
     local mode=$1 name=$2 setup=$3 input=$4 want_out=$5 want_err=$6 want_rc=${7:-0}
@@ -45,11 +47,11 @@ run_case() {
     (
         cd "$tmp/work" || exit 99
         eval "$setup"
-        if [[ $mode == batch ]]; then
-            "$WISH" "$tmp/input"
-        else
-            "$WISH" < "$tmp/input"
-        fi
+        case $mode in
+            batch) "$WISH" "$tmp/input" ;;
+            stdin) "$WISH" < "$tmp/input" ;;
+            args)  eval "\"\$WISH\" $input" ;;
+        esac
     ) > "$tmp/got_out" 2> "$tmp/got_err"
     rc=$?
 
@@ -72,6 +74,12 @@ run_case() {
 
 batch()       { run_case batch "$@"; }
 interactive() { run_case stdin "$@"; }
+invoke()      { run_case args "$@"; }
+
+echo "== invocation"
+invoke "directory as the batch file is an error" \
+    'mkdir d' \
+    'd' "" "$ERR" 1
 
 echo "== whitespace and input format"
 batch "tabs and spaces between words" "" \

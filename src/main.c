@@ -8,11 +8,34 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "executor.h"
 #include "parser.h"
 #include "path.h"
 #include "util.h"
+
+/* Opens the batch file; returns NULL if it cannot be used as one. */
+static FILE *open_batch_file(const char *name)
+{
+    FILE *file = fopen(name, "r");
+    struct stat st;
+
+    if (file == NULL)
+        return NULL;
+
+    /* fopen() succeeds on a directory, but reading from it fails. */
+    if (fstat(fileno(file), &st) < 0 || S_ISDIR(st.st_mode)) {
+        fclose(file);
+        return NULL;
+    }
+
+    /* Programs started by the shell must not inherit the batch file. */
+    if (fcntl(fileno(file), F_SETFD, FD_CLOEXEC) < 0)
+        wish_error();
+
+    return file;
+}
 
 int main(int argc, char *argv[])
 {
@@ -24,14 +47,11 @@ int main(int argc, char *argv[])
         exit(1);
     }
     if (argc == 2) {
-        input = fopen(argv[1], "r");
+        input = open_batch_file(argv[1]);
         if (input == NULL) {    /* bad batch file */
             wish_error();
             exit(1);
         }
-        /* Programs started by the shell must not inherit the batch file. */
-        if (fcntl(fileno(input), F_SETFD, FD_CLOEXEC) < 0)
-            wish_error();
         interactive = 0;
     }
 
