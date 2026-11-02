@@ -2,6 +2,7 @@
 #
 #   make            build ./wish
 #   make test       run the official OSTEP test suite (fetched on first use)
+#   make test-extra run additional edge-case tests (tests/extra-tests.sh)
 #   make clean      remove build artifacts
 #   make distclean  also remove the fetched test suite
 
@@ -13,7 +14,7 @@ SRCS := $(wildcard $(SRC_DIR)/*.c)
 OBJS := $(SRCS:$(SRC_DIR)/%.c=$(BUILD_DIR)/%.o)
 DEPS := $(OBJS:.o=.d)
 
-.PHONY: all test clean distclean
+.PHONY: all test test-extra clean distclean
 
 all: wish
 
@@ -29,6 +30,9 @@ $(BUILD_DIR):
 
 test: wish
 	./scripts/run-tests.sh
+
+test-extra: wish
+	./tests/extra-tests.sh
 
 clean:
 	rm -rf $(BUILD_DIR) wish
