@@ -39,8 +39,9 @@ int main(int argc, char *argv[])
 
     char *line = NULL;          /* getline() allocates and grows this buffer */
     size_t cap = 0;
+    int should_exit = 0;
 
-    for (;;) {
+    while (!should_exit) {
         if (interactive) {
             printf("wish> ");
             fflush(stdout);     /* empty the buffer before any fork() */
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
 
         struct command cmd;
         if (parse_command(line, &cmd)) {
-            execute_command(&cmd);
+            should_exit = execute_command(&cmd);
             free_command(&cmd);
         }
     }

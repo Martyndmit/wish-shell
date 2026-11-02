@@ -3,7 +3,11 @@
 
 #include "parser.h"
 
-/* Runs the program in a child process and waits for it to finish. */
-void execute_command(const struct command *cmd);
+/*
+ * Executes one command: a built-in runs inside the shell, any other program
+ * in a child process, and the shell waits for it to finish.
+ * Returns 1 if the shell has to exit, 0 otherwise.
+ */
+int execute_command(const struct command *cmd);
 
 #endif

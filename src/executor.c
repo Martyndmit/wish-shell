@@ -5,6 +5,7 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include "builtins.h"
 #include "path.h"
 #include "util.h"
 
@@ -48,9 +49,13 @@ static pid_t launch(const struct command *cmd)
     return pid;
 }
 
-void execute_command(const struct command *cmd)
+int execute_command(const struct command *cmd)
 {
+    if (is_builtin(cmd->argv[0]))
+        return run_builtin(cmd);
+
     pid_t pid = launch(cmd);
     if (pid > 0 && waitpid(pid, NULL, 0) < 0)
         wish_error();
+    return 0;
 }
