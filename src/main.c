@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "executor.h"
+#include "parser.h"
+#include "path.h"
 #include "util.h"
 
 int main(int argc, char *argv[])
@@ -32,22 +35,29 @@ int main(int argc, char *argv[])
         interactive = 0;
     }
 
+    path_init();
+
     char *line = NULL;          /* getline() allocates and grows this buffer */
     size_t cap = 0;
 
     for (;;) {
         if (interactive) {
             printf("wish> ");
-            fflush(stdout);
+            fflush(stdout);     /* empty the buffer before any fork() */
         }
 
         if (getline(&line, &cap, input) < 0)
             break;              /* EOF: exit gracefully */
 
-        /* TODO: parse and execute the line */
+        struct command cmd;
+        if (parse_command(line, &cmd)) {
+            execute_command(&cmd);
+            free_command(&cmd);
+        }
     }
 
     free(line);
+    path_free();
     if (input != stdin)
         fclose(input);
     exit(0);
